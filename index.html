@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SamadhanSetu - Local Issue Reporting Hub">
+    <title>SamadhanSetu - Local Issue Reporting Hub</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="your api key" async defer></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="assets/Logo.png" alt="SamadhanSetu Logo" class="logo-image" onerror="this.style.display='none';">
+                <h1 class="logo-text">🏛️ SamadhanSetu</h1>
+            </div>
+            <div class="nav-right">
+                <div class="language-selector">
+                    <select id="language-select" class="language-select" aria-label="Change Language">
+                        <option value="en">English</option>
+                        <option value="hi">Hindi (हिंदी)</option>
+                        <option value="te">Telugu (తెలుగు)</option>
+                        <option value="ta">Tamil (தமிழ்)</option>
+                        <option value="mr">Marathi (मराठी)</option>
+                    </select>
+                </div>
+                <div class="user-profile">
+                    <button class="user-icon-btn" id="user-profile-btn" aria-label="User profile" style="display: none;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="8" r="4"></circle>
+                            <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path>
+                        </svg>
+                    </button>
+                    <div class="auth-buttons" id="auth-buttons">
+                        <button class="btn btn-outline" id="login-btn" data-i18n="login">Login</button>
+                        <button class="btn btn-primary" id="register-btn" data-i18n="register">Register</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-icon-btn" aria-label="Menu" aria-expanded="false" id="menu-toggle">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="1"></circle>
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="12" cy="19" r="1"></circle>
+                        </svg>
+                    </button>
+                    <ul class="dropdown-menu" id="dropdown-menu">
+                        <li><a href="#home" class="dropdown-link active" data-page="home" data-i18n="home">Home</a></li>
+                        <li><a href="#track" class="dropdown-link" data-page="track" data-i18n="trackIssue">Track Issue</a></li>
+                        <li><a href="#submit" class="dropdown-link" data-page="submit" data-i18n="submitIssue">Submit Issue</a></li>
+                        <li><a href="#workers" class="dropdown-link" data-page="workers" data-i18n="findWorkers">Find Workers</a></li>
+                        <li><a href="#agent" class="dropdown-link" data-page="agent" data-i18n="agentDashboard">Agent Dashboard</a></li>
+                        <li><a href="#dashboard" class="dropdown-link" data-page="dashboard" data-i18n="dashboard">Dashboard</a></li>
+                        <li><a href="#reviews" class="dropdown-link" data-page="reviews" data-i18n="reviews">Reviews</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li><a href="#" class="dropdown-link" id="register-worker-link" data-i18n="registerAsWorker">Register as Worker</a></li>
+                        <li><a href="#logout" class="dropdown-link" id="logout-link" data-i18n="logout" style="display: none;">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link active" data-page="home" data-i18n="home">Home</a></li>
+                <li><a href="#track" class="nav-link" data-page="track" data-i18n="trackIssue">Track Issue</a></li>
+                <li><a href="#submit" class="nav-link" data-page="submit" data-i18n="submitIssue">Submit Issue</a></li>
+                <li><a href="#workers" class="nav-link" data-page="workers" data-i18n="findWorkers">Find Workers</a></li>
+                <li><a href="#agent" class="nav-link" data-page="agent" data-i18n="agentDashboard">Agent Dashboard</a></li>
+                <li><a href="#dashboard" class="nav-link" data-page="dashboard" data-i18n="dashboard">Dashboard</a></li>
+                <li><a href="#reviews" class="nav-link" data-page="reviews" data-i18n="reviews">Reviews</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="auth-modal" role="dialog" aria-labelledby="login-title" aria-hidden="true">
+        <div class="auth-modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <h2 id="login-title" data-i18n="login">Login</h2>
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-email" data-i18n="emailOrPhone">Email or Phone Number</label>
+                    <input type="text" id="login-email" name="email" required 
+                           placeholder="Enter email or phone number" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="login-password" data-i18n="password">Password</label>
+                    <input type="password" id="login-password" name="password" required 
+                           placeholder="Enter password" aria-required="true">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" data-i18n="login">Login</button>
+                <p class="auth-switch">
+                    <span data-i18n="dontHaveAccount">Don't have an account?</span>
+                    <a href="#" id="show-register" data-i18n="register">Register</a>
+                </p>
+            </form>
+        </div>
+    </div> 
+
+    <!-- Registration Modal -->
+    <div id="register-modal" class="auth-modal" role="dialog" aria-labelledby="register-title" aria-hidden="true">
+        <div class="auth-modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <h2 id="register-title" data-i18n="register">Register</h2>
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="register-name" data-i18n="fullName">Full Name</label>
+                    <input type="text" id="register-name" name="name" required 
+                           placeholder="Enter your full name" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="register-email" data-i18n="email">Email</label>
+                    <input type="email" id="register-email" name="email" 
+                           placeholder="Enter your email (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="register-phone" data-i18n="phoneNumber">Phone Number</label>
+                    <input type="tel" id="register-phone" name="phone" 
+                           placeholder="Enter your phone number (optional)" pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                    <label for="register-password" data-i18n="password">Password</label>
+                    <input type="password" id="register-password" name="password" required 
+                           placeholder="Enter password" minlength="6" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password" data-i18n="confirmPassword">Confirm Password</label>
+                    <input type="password" id="register-confirm-password" name="confirmPassword" required 
+                           placeholder="Confirm password" aria-required="true">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" data-i18n="register">Register</button>
+                <p class="auth-switch">
+                    <span data-i18n="alreadyHaveAccount">Already have an account?</span>
+                    <a href="#" id="show-login" data-i18n="login">Login</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Private Worker Registration Modal -->
+    <div id="worker-register-modal" class="auth-modal" role="dialog" aria-labelledby="worker-register-title" aria-hidden="true">
+        <div class="auth-modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <h2 id="worker-register-title" data-i18n="registerAsWorker">Register as Private Worker</h2>
+            <form id="worker-register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="worker-name" data-i18n="fullName">Full Name</label>
+                    <input type="text" id="worker-name" name="name" required 
+                           placeholder="Enter your full name" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="worker-phone" data-i18n="phoneNumber">Phone Number <span class="required">*</span></label>
+                    <input type="tel" id="worker-phone" name="phone" required 
+                           placeholder="Enter your phone number" pattern="[0-9]{10}" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="worker-email" data-i18n="email">Email</label>
+                    <input type="email" id="worker-email" name="email" 
+                           placeholder="Enter your email (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="worker-job-role" data-i18n="jobRole">Job Role <span class="required">*</span></label>
+                    <select id="worker-job-role" name="jobRole" required aria-required="true">
+                        <option value="">Select Job Role</option>
+                        <option value="electrician" data-i18n="electrician">Electrician</option>
+                        <option value="plumber" data-i18n="plumber">Plumber</option>
+                        <option value="carpenter" data-i18n="carpenter">Carpenter</option>
+                        <option value="painter" data-i18n="painter">Painter</option>
+                        <option value="mechanic" data-i18n="mechanic">Mechanic</option>
+                        <option value="cleaner" data-i18n="cleaner">Cleaner</option>
+                        <option value="gardener" data-i18n="gardener">Gardener</option>
+                        <option value="appliance_repair" data-i18n="applianceRepair">Appliance Repair</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="worker-experience" data-i18n="experience">Years of Experience</label>
+                    <input type="number" id="worker-experience" name="experience" min="0" 
+                           placeholder="Enter years of experience">
+                </div>
+                <div class="form-group">
+                    <label for="worker-address" data-i18n="address">Address</label>
+                    <textarea id="worker-address" name="address" rows="3" 
+                              placeholder="Enter your address"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="worker-password" data-i18n="password">Password</label>
+                    <input type="password" id="worker-password" name="password" required 
+                           placeholder="Enter password" minlength="6" aria-required="true">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" data-i18n="register">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Home Page -->
+    <section id="home" class="page active" role="main">
+        <div class="container">
+            <div class="hero">
+                <h2 data-i18n="welcome">Welcome to SamadhanSetu</h2>
+                <p class="hero-subtitle" data-i18n="subtitle">Your local platform for reporting and tracking civic issues</p>
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-issues">0</div>
+                        <div class="stat-label" data-i18n="totalIssues">Total Issues</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="open-issues">0</div>
+                        <div class="stat-label" data-i18n="open">Open</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="resolved-issues">0</div>
+                        <div class="stat-label" data-i18n="resolved">Resolved</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="achievements-section">
+                <h3>Our Achievements</h3>
+                <div class="achievements-grid">
+                    <div class="achievement-item">
+                        <img src="assets/AC1.png" alt="Achievement 1" class="achievement-image" onerror="this.src='assets/AC1.jpg'; this.onerror=null;">
+                    </div>
+                    <div class="achievement-item">
+                        <img src="assets/AC2.png" alt="Achievement 2" class="achievement-image" onerror="this.src='assets/AC2.jpg'; this.onerror=null;">
+                    </div>
+                    <div class="achievement-item">
+                        <img src="assets/AC3.png" alt="Achievement 3" class="achievement-image" onerror="this.src='assets/AC3.jpg'; this.onerror=null;">
+                    </div>
+                    <div class="achievement-item">
+                        <img src="assets/AC4.png" alt="Achievement 4" class="achievement-image" onerror="this.src='assets/AC4.jpg'; this.onerror=null;">
+                    </div>
+                    <div class="achievement-item">
+                        <img src="assets/AC5.png" alt="Achievement 5" class="achievement-image" onerror="this.src='assets/AC5.jpg'; this.onerror=null;">
+                    </div>
+                    <div class="achievement-item">
+                        <img src="assets/AC6.png" alt="Achievement 6" class="achievement-image" onerror="this.src='assets/AC6.jpg'; this.onerror=null;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="solved-issues-section">
+                <h3>Solved Issues</h3>
+                <div id="solved-issues-list" class="issues-grid">
+                    <!-- Solved issues will be dynamically loaded here -->
+                </div>
+            </div>
+
+            <div class="featured-issues">
+                <h3>Recent Issues</h3>
+                <div id="recent-issues-list" class="issues-grid">
+                    <!-- Issues will be dynamically loaded here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Track Issue Page -->
+    <section id="track" class="page" role="main">
+        <div class="container">
+            <h2>Track Your Issue</h2>
+            <div class="track-issue-form">
+                <div class="form-group">
+                    <label for="track-issue-id">Enter Issue ID</label>
+                    <input type="text" id="track-issue-id" name="issueId" 
+                           placeholder="Enter your issue ID to track status"
+                           aria-label="Issue ID">
+                    <button type="button" class="btn btn-primary" id="track-issue-btn">Track Issue</button>
+                </div>
+            </div>
+            <div id="track-issue-result" class="track-result" style="display: none;">
+                <!-- Track result will be displayed here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Find Workers Page -->
+    <section id="workers" class="page" role="main">
+        <div class="container">
+            <h2 data-i18n="findWorkers">Find Private Workers</h2>
+            
+            <div class="workers-filter">
+                <div class="filter-group">
+                    <label for="filter-job-role" data-i18n="filterByJobRole">Filter by Job Role:</label>
+                    <select id="filter-job-role" aria-label="Filter by job role">
+                        <option value="">All Job Roles</option>
+                        <option value="electrician" data-i18n="electrician">Electrician</option>
+                        <option value="plumber" data-i18n="plumber">Plumber</option>
+                        <option value="carpenter" data-i18n="carpenter">Carpenter</option>
+                        <option value="painter" data-i18n="painter">Painter</option>
+                        <option value="mechanic" data-i18n="mechanic">Mechanic</option>
+                        <option value="cleaner" data-i18n="cleaner">Cleaner</option>
+                        <option value="gardener" data-i18n="gardener">Gardener</option>
+                        <option value="appliance_repair" data-i18n="applianceRepair">Appliance Repair</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="sort-workers" data-i18n="sortBy">Sort by:</label>
+                    <select id="sort-workers" aria-label="Sort workers">
+                        <option value="rating" data-i18n="highestRating">Highest Rating</option>
+                        <option value="completed" data-i18n="mostCompleted">Most Completed Jobs</option>
+                        <option value="experience" data-i18n="mostExperienced">Most Experienced</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="workers-list" class="workers-grid">
+                <!-- Workers will be dynamically loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Agent Dashboard Page -->
+    <section id="agent" class="page" role="main">
+        <div class="container">
+            <h2 data-i18n="agentDashboard">Agent Dashboard</h2>
+            
+            <div class="agent-search-section">
+                <div class="form-group">
+                    <label for="agent-work-id" data-i18n="enterWorkId">Enter Work ID / Issue ID</label>
+                    <input type="text" id="agent-work-id" name="workId" 
+                           placeholder="Enter Work ID to view complaint details"
+                           aria-label="Work ID">
+                    <button type="button" class="btn btn-primary" id="agent-search-btn" data-i18n="search">Search</button>
+                </div>
+            </div>
+
+            <div id="agent-result" class="agent-result" style="display: none;">
+                <!-- Agent search result will be displayed here -->
+            </div>
+
+            <div class="agent-help-section">
+                <div class="help-card">
+                    <h3 data-i18n="customerCare">Customer Care</h3>
+                    <p data-i18n="customerCareDesc">Need help? Contact our customer care team</p>
+                    <a href="tel:+91-1800-123-4567" class="btn btn-primary">
+                        📞 <span data-i18n="callCustomerCare">Call Customer Care</span>: +91-1800-123-4567
+                    </a>
+                </div>
+                <div class="help-card">
+                    <h3 data-i18n="howToUse">How to Use This App</h3>
+                    <ul>
+                        <li data-i18n="helpStep1">Enter the Work ID or Issue ID to view complaint details</li>
+                        <li data-i18n="helpStep2">View all information about the complaint including address, status, and assigned representative</li>
+                        <li data-i18n="helpStep3">Contact customer care if you need assistance resolving the issue</li>
+                        <li data-i18n="helpStep4">Update issue status as needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Page -->
+    <section id="reviews" class="page" role="main">
+        <div class="container">
+            <h2>Reviews</h2>
+            <div class="reviews-section">
+                <div class="reviews-list" id="reviews-list">
+                    <!-- Sample reviews and user reviews will be displayed here -->
+                </div>
+                <div class="review-form-section">
+                    <h3>Submit a Review</h3>
+                    <form id="review-form" class="review-form">
+                        <div class="form-group">
+                            <label for="review-rating">Rating</label>
+                            <select id="review-rating" name="rating" required>
+                                <option value="">Select Rating</option>
+                                <option value="5">5 Stars</option>
+                                <option value="4">4 Stars</option>
+                                <option value="3">3 Stars</option>
+                                <option value="2">2 Stars</option>
+                                <option value="1">1 Star</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="review-text">Your Review</label>
+                            <textarea id="review-text" name="review" rows="5" 
+                                      placeholder="Share your experience with SamadhanSetu..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Review</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Issue Submission Page -->
+    <section id="submit" class="page" role="main">
+        <div class="container">
+            <h2>Submit Issue</h2>
+            <form id="issue-form" class="issue-form" aria-label="Issue submission form">
+                <div class="form-group">
+                    <label for="issue-title">Title <span class="required">*</span></label>
+                    <input type="text" id="issue-title" name="title" required 
+                           placeholder="Brief description of the issue" 
+                           aria-required="true">
+                </div>
+
+                <div class="form-group">
+                    <label for="issue-description" data-i18n="description">Description <span class="required">*</span></label>
+                    <div class="voice-recording-container">
+                        <button type="button" class="btn btn-secondary" id="voice-record-btn">
+                            🎤 <span data-i18n="startRecording">Start Recording</span>
+                        </button>
+                        <span id="voice-status" class="voice-status"></span>
+                    </div>
+                    <textarea id="issue-description" name="description" required 
+                              rows="5" 
+                              placeholder="Provide detailed information about the issue..."
+                              aria-required="true"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="issue-category">Category <span class="required">*</span></label>
+                    <select id="issue-category" name="category" required aria-required="true">
+                        <option value="">Select a category</option>
+                        <option value="infrastructure">Infrastructure</option>
+                        <option value="safety">Safety</option>
+                        <option value="environment">Environment</option>
+                        <option value="transportation">Transportation</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Address Details <span class="required">*</span></label>
+                    <div class="address-fields">
+                        <div class="address-row">
+                            <input type="text" id="house-number" name="houseNumber" 
+                                   placeholder="House Number" class="address-field">
+                            <input type="text" id="street-name" name="streetName" required
+                                   placeholder="Street Name *" class="address-field" aria-required="true">
+                        </div>
+                        <div class="address-row">
+                            <input type="text" id="village-name" name="villageName" required
+                                   placeholder="Village Name *" class="address-field" aria-required="true">
+                            <input type="text" id="mandal" name="mandal" required
+                                   placeholder="Mandal *" class="address-field" aria-required="true">
+                        </div>
+                        <div class="address-row">
+                            <input type="text" id="district" name="district" required
+                                   placeholder="District *" class="address-field" aria-required="true">
+                            <input type="text" id="pincode" name="pincode" required
+                                   placeholder="Pincode *" class="address-field" pattern="[0-9]{6}" 
+                                   maxlength="6" aria-required="true">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="issue-location">Search Location on Map (Optional)</label>
+                        <input type="text" id="issue-location" name="location" 
+                               placeholder="Search for a location on map"
+                               aria-label="Search location">
+                        <div id="map-container" class="map-container">
+                            <div id="map" class="map"></div>
+                            <div class="map-instructions">Click on the map to set coordinates</div>
+                        </div>
+                        <input type="hidden" id="issue-lat" name="lat">
+                        <input type="hidden" id="issue-lng" name="lng">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="issue-image">Upload Issue</label>
+                    <div class="upload-container">
+                        <input type="file" id="issue-image" name="image" 
+                               accept="image/*" 
+                               aria-label="Upload issue image">
+                        <button type="button" class="btn btn-secondary" id="upload-btn">Upload</button>
+                    </div>
+                    <div class="image-preview-container">
+                        <img id="image-preview" src="" alt="Image preview" class="image-preview" style="display: none;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            <div id="submit-success" class="submit-success" style="display: none;">
+                <div class="success-message">
+                    <h3>Issue Successfully Submitted</h3>
+                    <p>Your issue has been submitted. You can track its status using the Issue ID: <strong id="submitted-issue-id"></strong></p>
+                    <button type="button" class="btn btn-primary" id="track-submitted-issue">Track Issue</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Dashboard Page -->
+    <section id="dashboard" class="page" role="main">
+        <div class="container">
+            <h2>Issues Dashboard</h2>
+            
+            <!-- Filters -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="filter-category">Filter by Category:</label>
+                    <select id="filter-category" aria-label="Filter by category">
+                        <option value="">All Categories</option>
+                        <option value="infrastructure">Infrastructure</option>
+                        <option value="safety">Safety</option>
+                        <option value="environment">Environment</option>
+                        <option value="transportation">Transportation</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-status">Filter by Status:</label>
+                    <select id="filter-status" aria-label="Filter by status">
+                        <option value="">All Statuses</option>
+                        <option value="open">Open</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="sort-issues">Sort by:</label>
+                    <select id="sort-issues" aria-label="Sort issues">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="upvotes">Most Upvoted</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Issues List -->
+            <div id="issues-list" class="issues-grid">
+                <!-- Issues will be dynamically loaded here -->
+            </div>
+
+            <div id="no-issues" class="no-issues" style="display: none;">
+                <p>No issues found matching your filters.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Issue Detail Modal -->
+    <div id="issue-modal" class="modal" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <div id="modal-body">
+                <!-- Modal content will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div id="comment-modal" class="modal" role="dialog" aria-labelledby="comment-modal-title" aria-hidden="true">
+        <div class="modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <h3 id="comment-modal-title">Add a Comment</h3>
+            <form id="comment-form">
+                <div class="form-group">
+                    <label for="comment-text">Your Comment</label>
+                    <textarea id="comment-text" name="comment" rows="4" 
+                              placeholder="Share your thoughts..." required></textarea>
+                </div>
+                <input type="hidden" id="comment-issue-id">
+                <button type="submit" class="btn btn-primary">Submit Comment</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="polite" aria-atomic="true">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Floating Chatbot -->
+<div class="chatbot-container" id="chatbot-container">
+  <button class="chatbot-btn" id="chatbot-toggle" aria-label="Open chatbot">
+    💬
+  </button>
+  <div class="chatbot-box" id="chatbot-box">
+    <div class="chatbot-header">
+      <span>SamadhanSetu Assistant</span>
+      <button id="chatbot-close" aria-label="Close chatbot">&times;</button>
+    </div>
+    <div class="chatbot-messages" id="chatbot-messages">
+      <div class="bot-msg">Hi 👋, how can I help you with SamadhanSetu today?</div>
+    </div>
+    <div class="chatbot-input">
+      <input type="text" id="chatbot-input-field" placeholder="Type your message..." />
+      <button id="chatbot-send">Send</button>
+    </div>
+  </div>
+</div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

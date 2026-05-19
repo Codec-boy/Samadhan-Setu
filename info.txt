@@ -1,0 +1,15 @@
+Open these URLs instead:
+
+1️⃣ Django Admin
+http://127.0.0.1:8000/admin/
+
+Login and you should see your Issues database table stored using SQLite in your Django project.
+
+2️⃣ Your API Endpoint
+http://127.0.0.1:8000/api/issues/submit/
+
+It should show:
+
+{"error": "Only POST method allowed"}
+
+That means API is working.
