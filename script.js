@@ -1555,62 +1555,42 @@ function navigateToPage(page) {
     }
 }
 
-// ===== Google Maps Integration =====
+// ===== Leaflet Maps Integration =====
 function initMap() {
     if (!app.map && elements.mapContainer) {
-        const defaultLocation = { lat: 40.7128, lng: -74.0060 }; // Default to NYC
+        const defaultLocation = [22.3072, 73.1812]; // Default to Vadodara, Gujarat
         
-        app.map = new google.maps.Map(elements.mapContainer, {
-            center: defaultLocation,
-            zoom: 13,
-            mapTypeControl: true,
-            streetViewControl: true,
-            fullscreenControl: true
-        });
+        app.map = L.map('map').setView(defaultLocation, 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(app.map);
 
         // Initialize marker
-        app.marker = new google.maps.Marker({
-            map: app.map,
-            draggable: true,
-            animation: google.maps.Animation.DROP
-        });
+        app.marker = L.marker(defaultLocation, {
+            draggable: true
+        }).addTo(app.map);
 
         // Click on map to set location
-        app.map.addListener('click', (e) => {
-            setLocation(e.latLng.lat(), e.latLng.lng());
+        app.map.on('click', (e) => {
+            setLocation(e.latlng.lat, e.latlng.lng);
         });
 
         // Marker drag end
-        app.marker.addListener('dragend', (e) => {
-            setLocation(e.latLng.lat(), e.latLng.lng());
+        app.marker.on('dragend', (e) => {
+            const position = app.marker.getLatLng();
+            setLocation(position.lat, position.lng);
         });
-
-        // Initialize autocomplete
-        if (elements.issueLocation && google.maps.places) {
-            app.autocomplete = new google.maps.places.Autocomplete(elements.issueLocation, {
-                types: ['geocode']
-            });
-
-            app.autocomplete.addListener('place_changed', () => {
-                const place = app.autocomplete.getPlace();
-                if (place.geometry) {
-                    setLocation(place.geometry.location.lat(), place.geometry.location.lng());
-                    app.map.setCenter(place.geometry.location);
-                    app.map.setZoom(15);
-                }
-            });
-        }
 
         // Try to get user's location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const userLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    app.map.setCenter(userLocation);
-                    app.map.setZoom(15);
+                    const userLocation = [position.coords.latitude, position.coords.longitude];
+                    app.map.setView(userLocation, 15);
+                    app.marker.setLatLng(userLocation);
+                    // Optionally set location on geolocation success
+                    // setLocation(userLocation[0], userLocation[1]);
                 },
                 () => {
                     // User denied geolocation or error occurred
@@ -1623,16 +1603,18 @@ function initMap() {
 
 function setLocation(lat, lng) {
     app.selectedLocation = { lat, lng };
-    app.marker.setPosition({ lat, lng });
-    app.map.setCenter({ lat, lng });
+    app.marker.setLatLng([lat, lng]);
+    app.map.setView([lat, lng]);
     
-    // Reverse geocode to get address
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === 'OK' && results[0]) {
-            elements.issueLocation.value = results[0].formatted_address;
-        }
-    });
+    // Reverse geocode to get address using Nominatim (OpenStreetMap)
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.display_name) {
+                elements.issueLocation.value = data.display_name;
+            }
+        })
+        .catch(err => console.error('Geocoding error:', err));
 
     elements.issueLat.value = lat;
     elements.issueLng.value = lng;
@@ -1791,12 +1773,10 @@ function submitIssue(formData, imageData) {
             elements.imagePreview.style.display = 'none';
             app.selectedLocation = null;
             if (app.marker) {
-                app.marker.setMap(null);
-                app.marker = new google.maps.Marker({
-                    map: app.map,
-                    draggable: true,
-                    animation: google.maps.Animation.DROP
-                });
+                const defaultLocation = [22.3072, 73.1812];
+                app.marker.setLatLng(defaultLocation);
+                app.map.setView(defaultLocation, 13);
+                elements.issueLocation.value = '';
             }
         } else {
             showToast('Error: ' + data.error, 'error');

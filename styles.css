@@ -2402,3 +2402,30 @@ img{
 img:hover{
     filter:brightness(1.05);
 }
+
+/* ===== Map Styles ===== */
+.map-container {
+    margin-top: 1rem;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--border-color);
+    position: relative;
+    background: var(--bg-secondary);
+}
+
+.map {
+    height: 350px;
+    width: 100%;
+    z-index: 1;
+}
+
+.map-instructions {
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+}
