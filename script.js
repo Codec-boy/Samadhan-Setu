@@ -1,3 +1,6 @@
+// ===== API Base URL =====
+const API_BASE = 'http://127.0.0.1:8000';
+
 // ===== Language/Internationalization System =====
 const i18n = {
     currentLanguage: localStorage.getItem('SamadhanSetuLanguage') || 'en',
@@ -121,8 +124,9 @@ const i18n = {
             painting: 'Painting',
             cleaning: 'Cleaning',
             gardening: 'Gardening',
-            // Agent
-            agentDashboard: 'Agent Dashboard',
+            // Agent / Admin
+            adminDashboard: 'Admin Dashboard',
+            agentDashboard: 'Admin Dashboard',
             enterWorkId: 'Enter Work ID / Issue ID',
             search: 'Search',
             howToUse: 'How to Use This App',
@@ -134,6 +138,7 @@ const i18n = {
             issueSubmittedDesc: 'Your issue has been submitted. You can track its status using the Issue ID:'
         },
         hi: {
+            adminDashboard: 'एडमिन डैशबोर्ड',
             home: 'होम',
             trackIssue: 'समस्या ट्रैक करें',
             submitIssue: 'समस्या दर्ज करें',
@@ -214,6 +219,7 @@ const i18n = {
             searchLocation: 'मानचित्र पर स्थान खोजें (वैकल्पिक)'
         },
         te: {
+            adminDashboard: 'అడ్మిన్ డ్యాష్‌బోర్డ్',
             home: 'హోమ్',
             trackIssue: 'సమస్యను ట్రాక్ చేయండి',
             submitIssue: 'సమస్యను సమర్పించండి',
@@ -295,6 +301,7 @@ const i18n = {
             searchLocation: 'మ్యాప్‌లో స్థానాన్ని శోధించండి (ఐచ్ఛికం)'
         },
         ta: {
+            adminDashboard: 'நிர்வாகி டாஷ்போர்டு',
             home: 'முகப்பு',
             trackIssue: 'பிரச்சினையை கண்காணி',
             submitIssue: 'பிரச்சினையை சமர்ப்பிக்கவும்',
@@ -376,6 +383,7 @@ const i18n = {
             searchLocation: 'வரைபடத்தில் இடத்தைத் தேடு (விருப்பமானது)'
         },
         mr: {
+    adminDashboard: 'अ‍ॅडमिन डॅशबोर्ड',
     home: 'मुख्यपृष्ठ',
     trackIssue: 'समस्या ट्रॅक करा',
     submitIssue: 'समस्या नोंदवा',
@@ -490,18 +498,23 @@ class IssueManager {
     
     async fetchServerIssues() {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/issues/all/');
-            if(res.ok) {
-                this.issues = await res.json();
-                this.saveIssues(); // Store for backup/offline usage
-                // Trigger UI reload since we got fresh data
+            const res = await fetch(`${API_BASE}/api/issues/my-issues/`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                this.issues = data.issues || [];
+                this.saveIssues();
                 if (app && app.currentPage === 'home' && typeof loadHomePage === 'function') loadHomePage();
                 else if (app && app.currentPage === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
+            } else if (res.status === 401) {
+                // Not logged in — start with empty local cache
+                this.issues = this.loadIssues();
             } else {
                 throw new Error("Server responded with status: " + res.status);
             }
         } catch (e) {
-            console.error("Failed to fetch server issues, loading from local cache:", e);
+            console.warn("Failed to fetch server issues, loading from local cache:", e);
             this.issues = this.loadIssues();
         }
     }
@@ -676,44 +689,8 @@ class IssueManager {
         if (stored) {
             return JSON.parse(stored);
         }
-        // Default representatives
-        const defaults = [
-            {
-                id: 'rep1',
-                name: 'Rajesh Kumar',
-                phone: '+91-9876543210',
-                email: 'rajesh.kumar@SamadhanSetu.gov',
-                categories: ['infrastructure', 'transportation'],
-                rating: 4.5,
-                salary: 50000,
-                resolvedCount: 150,
-                pendingCount: 5
-            },
-            {
-                id: 'rep2',
-                name: 'Priya Sharma',
-                phone: '+91-9876543211',
-                email: 'priya.sharma@SamadhanSetu.gov',
-                categories: ['safety', 'environment'],
-                rating: 4.8,
-                salary: 52000,
-                resolvedCount: 180,
-                pendingCount: 3
-            },
-            {
-                id: 'rep3',
-                name: 'Amit Patel',
-                phone: '+91-9876543212',
-                email: 'amit.patel@SamadhanSetu.gov',
-                categories: ['utilities', 'other'],
-                rating: 4.2,
-                salary: 48000,
-                resolvedCount: 120,
-                pendingCount: 7
-            }
-        ];
-        localStorage.setItem('SamadhanSetuRepresentatives', JSON.stringify(defaults));
-        return defaults;
+        // No default representatives — start fresh
+        return [];
     }
     
     createDefaultRepresentative() {
@@ -923,7 +900,7 @@ class IssueManager {
     getStats() {
         return {
             total: this.issues.length,
-            open: this.issues.filter(i => i.status === 'submitted' || i.status === 'open').length,
+            open: this.issues.filter(i => i.status === 'submitted' || i.status === 'open' || i.status === 'pending').length,
             inProgress: this.issues.filter(i => i.status === 'dispatched' || i.status === 'in-progress').length,
             resolved: this.issues.filter(i => i.status === 'resolved').length
         };
@@ -934,23 +911,8 @@ class IssueManager {
         if (stored) {
             return JSON.parse(stored);
         }
-        // Sample reviews
-        return [
-            {
-                id: 'review_1',
-                author: 'John Doe',
-                rating: 5,
-                text: 'Great platform! My issue was resolved quickly. Very satisfied with the service.',
-                date: new Date(Date.now() - 86400000).toISOString()
-            },
-            {
-                id: 'review_2',
-                author: 'Jane Smith',
-                rating: 4,
-                text: 'Easy to use and track issues. The response time could be better, but overall good experience.',
-                date: new Date(Date.now() - 172800000).toISOString()
-            }
-        ];
+        // No sample reviews — start fresh
+        return [];
     }
 
     saveReviews(reviews) {
@@ -994,90 +956,104 @@ class IssueManager {
     }
 }
 
-// ===== Authentication System =====
+// ===== Authentication System (Django-backed) =====
 class AuthManager {
     constructor() {
-        this.storageKey = 'SamadhanSetuUsers';
+        // Worker data is a non-auth UI feature — kept in localStorage for now.
         this.workerStorageKey = 'SamadhanSetuWorkers';
-        this.currentUserKey = 'SamadhanSetuCurrentUser';
     }
-    
-    getUsers() {
-        const stored = localStorage.getItem(this.storageKey);
-        return stored ? JSON.parse(stored) : [];
-    }
-    
-    saveUsers(users) {
-        localStorage.setItem(this.storageKey, JSON.stringify(users));
-    }
-    
-    register(userData) {
-        const users = this.getUsers();
-        // Check if email or phone already exists
-        if (userData.email && users.find(u => u.email === userData.email)) {
-            return { success: false, message: 'Email already registered' };
+
+    // ---- Django API: Register new citizen ----
+    async register(userData) {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/signup/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    username: userData.username || userData.name,
+                    email: userData.email || '',
+                    password: userData.password,
+                    confirm_password: userData.confirm_password || userData.password
+                    // NOTE: is_staff / is_superuser are NEVER sent — backend ignores them anyway
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                return { success: true, user: data.user };
+            }
+            const msg = Array.isArray(data.error) ? data.error.join(' ') : (data.error || 'Registration failed');
+            return { success: false, message: msg };
+        } catch (e) {
+            return { success: false, message: 'Network error. Is the backend running?' };
         }
-        if (userData.phone && users.find(u => u.phone === userData.phone)) {
-            return { success: false, message: 'Phone number already registered' };
+    }
+
+    // ---- Django API: Login ----
+    async login(identifier, password) {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/login/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ username: identifier, password })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                return { success: true, user: data.user };
+            }
+            return { success: false, message: data.error || 'Invalid credentials' };
+        } catch (e) {
+            return { success: false, message: 'Network error. Is the backend running?' };
         }
-        
-        const newUser = {
-            id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            name: userData.name,
-            email: userData.email || null,
-            phone: userData.phone || null,
-            password: userData.password, // In production, hash this
-            createdAt: new Date().toISOString()
-        };
-        
-        users.push(newUser);
-        this.saveUsers(users);
-        return { success: true, user: newUser };
     }
-    
-    login(identifier, password) {
-        const users = this.getUsers();
-        const user = users.find(u => 
-            (u.email === identifier || u.phone === identifier) && u.password === password
-        );
-        
-        if (user) {
-            localStorage.setItem(this.currentUserKey, JSON.stringify(user));
-            return { success: true, user };
+
+    // ---- Django API: Logout ----
+    async logout() {
+        try {
+            await fetch(`${API_BASE}/api/auth/logout/`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (e) {
+            console.warn('Logout request failed:', e);
         }
-        return { success: false, message: 'Invalid credentials' };
+        // Clear any remaining non-sensitive cached state
+        localStorage.removeItem('SamadhanSetuIssues');
     }
-    
-    logout() {
-        localStorage.removeItem(this.currentUserKey);
+
+    // ---- Django API: Get current session user ----
+    async getCurrentUser() {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/me/`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return data.authenticated ? data.user : null;
+            }
+        } catch (e) {
+            console.warn('Session check failed:', e);
+        }
+        return null;
     }
-    
-    getCurrentUser() {
-        const stored = localStorage.getItem(this.currentUserKey);
-        return stored ? JSON.parse(stored) : null;
-    }
-    
-    isLoggedIn() {
-        return this.getCurrentUser() !== null;
-    }
-    
-    // Worker Management
+
+    // ---- Worker Management (non-auth, localStorage UI feature) ----
     getWorkers() {
         const stored = localStorage.getItem(this.workerStorageKey);
         return stored ? JSON.parse(stored) : [];
     }
-    
+
     saveWorkers(workers) {
         localStorage.setItem(this.workerStorageKey, JSON.stringify(workers));
     }
-    
+
     registerWorker(workerData) {
         const workers = this.getWorkers();
-        // Check if phone already exists
         if (workers.find(w => w.phone === workerData.phone)) {
             return { success: false, message: 'Phone number already registered as worker' };
         }
-        
         const newWorker = {
             id: 'worker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             name: workerData.name,
@@ -1086,24 +1062,21 @@ class AuthManager {
             jobRole: workerData.jobRole,
             experience: workerData.experience || 0,
             address: workerData.address || '',
-            password: workerData.password,
             rating: 5.0,
             totalJobs: 0,
             completedJobs: 0,
             earnings: 0,
             createdAt: new Date().toISOString()
         };
-        
         workers.push(newWorker);
         this.saveWorkers(workers);
         return { success: true, worker: newWorker };
     }
-    
+
     updateWorkerRating(workerId, rating) {
         const workers = this.getWorkers();
         const worker = workers.find(w => w.id === workerId);
         if (worker) {
-            // Calculate new rating (average)
             const totalRatings = worker.totalJobs || 0;
             const currentRating = worker.rating || 5.0;
             worker.rating = ((currentRating * totalRatings) + rating) / (totalRatings + 1);
@@ -1115,6 +1088,29 @@ class AuthManager {
         return null;
     }
 }
+
+// ===== One-time Legacy Data Cleanup =====
+(function cleanLegacyData() {
+    const CURRENT_VERSION = '2.0.0';
+    const storedVersion = localStorage.getItem('SamadhanSetuAppVersion');
+    if (storedVersion !== CURRENT_VERSION) {
+        // Remove old auth & demo data keys from previous versions
+        const legacyKeys = [
+            'SamadhanSetuUsers',          // plain-text user accounts (old auth)
+            'SamadhanSetuWorkers',        // mock/sample workers
+            'SamadhanSetuCurrentUser',    // old session key
+            'SamadhanSetuRepresentatives',// hardcoded mock representatives
+            'SamadhanSetuLeaderboard',    // fake leaderboard entries
+            'SamadhanSetuIssues',         // cached issues (stale from old DB)
+            'SamadhanSetuReviews',        // sample review entries
+            'SamadhanSetuPolls',          // old poll data
+            'SamadhanSetuCommunity'       // old community data
+        ];
+        legacyKeys.forEach(key => localStorage.removeItem(key));
+        localStorage.setItem('SamadhanSetuAppVersion', CURRENT_VERSION);
+        console.info('[SamadhanSetu] Legacy data cleared for version', CURRENT_VERSION);
+    }
+})();
 
 // ===== Application State =====
 const app = {
@@ -1198,10 +1194,16 @@ const elements = {
     workersList: document.getElementById('workers-list'),
     filterJobRole: document.getElementById('filter-job-role'),
     sortWorkers: document.getElementById('sort-workers'),
-    // Agent dashboard
-    agentWorkId: document.getElementById('agent-work-id'),
-    agentSearchBtn: document.getElementById('agent-search-btn'),
-    agentResult: document.getElementById('agent-result'),
+    // Map search & Admin elements
+    searchLocationBtn: document.getElementById('search-location-btn'),
+    adminRefreshBtn: document.getElementById('admin-refresh-btn'),
+    adminTotalIssues: document.getElementById('admin-total-issues'),
+    adminPendingIssues: document.getElementById('admin-pending-issues'),
+    adminProgressIssues: document.getElementById('admin-progress-issues'),
+    adminResolvedIssues: document.getElementById('admin-resolved-issues'),
+    adminSearchInput: document.getElementById('admin-search-input'),
+    adminFilterStatus: document.getElementById('admin-filter-status'),
+    adminIssuesList: document.getElementById('admin-issues-list'),
     // Chatbot elements (queried later on init)
     chatbotToggle: null,
     chatWindow: null,
@@ -1211,111 +1213,124 @@ const elements = {
     chatClose: null
 };
 
-// ===== Authentication Functions =====
-function initAuth() {
-    // Check if user is logged in
-    app.currentUser = app.authManager.getCurrentUser();
+// ===== Authentication Functions (Django session-backed) =====
+async function initAuth() {
+    // Restore session from Django — no localStorage lookup
+    app.currentUser = await app.authManager.getCurrentUser();
     updateAuthUI();
-    
+
     // Login button
     if (elements.loginBtn) {
-        elements.loginBtn.addEventListener('click', () => {
-            openAuthModal('login');
-        });
+        elements.loginBtn.addEventListener('click', () => openAuthModal('login'));
     }
-    
+
     // Register button
     if (elements.registerBtn) {
-        elements.registerBtn.addEventListener('click', () => {
-            openAuthModal('register');
-        });
+        elements.registerBtn.addEventListener('click', () => openAuthModal('register'));
     }
-    
-    // Login form
+
+    // ---- Login form ----
     if (elements.loginForm) {
-        elements.loginForm.addEventListener('submit', (e) => {
+        elements.loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(elements.loginForm);
-            const identifier = formData.get('email');
-            const password = formData.get('password');
-            
-            const result = app.authManager.login(identifier, password);
+            const identifier = (formData.get('email') || '').trim();
+            const password = formData.get('password') || '';
+
+            if (!identifier || !password) {
+                showToast('Please enter your username/email and password', 'error');
+                return;
+            }
+
+            showToast('Logging in...', 'info');
+            const result = await app.authManager.login(identifier, password);
+
             if (result.success) {
                 app.currentUser = result.user;
                 updateAuthUI();
                 closeAuthModal();
-                showToast('Login successful!', 'success');
+                showToast('Login successful! Welcome back, ' + result.user.username, 'success');
+                // Route by role
+                if (result.user.is_admin) {
+                    navigateToPage('admin'); // Admin goes to admin dashboard
+                } else {
+                    navigateToPage('dashboard');
+                }
             } else {
                 showToast(result.message || 'Invalid credentials', 'error');
             }
         });
     }
-    
-    // Register form
+
+    // ---- Register form ----
     if (elements.registerForm) {
-        elements.registerForm.addEventListener('submit', (e) => {
+        elements.registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(elements.registerForm);
-            
-            if (formData.get('password') !== formData.get('confirmPassword')) {
+
+            const username = (formData.get('name') || '').trim();
+            const email = (formData.get('email') || '').trim();
+            const password = formData.get('password') || '';
+            const confirmPassword = formData.get('confirmPassword') || '';
+
+            if (!username) {
+                showToast('Username is required', 'error');
+                return;
+            }
+            if (!email) {
+                showToast('Email is required', 'error');
+                return;
+            }
+            if (password !== confirmPassword) {
                 showToast('Passwords do not match', 'error');
                 return;
             }
-            
-            const userData = {
-                name: formData.get('name'),
-                email: formData.get('email') || null,
-                phone: formData.get('phone') || null,
-                password: formData.get('password')
-            };
-            
-            // At least email or phone required
-            if (!userData.email && !userData.phone) {
-                showToast('Please provide either email or phone number', 'error');
-                return;
-            }
-            
-            const result = app.authManager.register(userData);
+
+            showToast('Creating account...', 'info');
+            const result = await app.authManager.register({
+                username,
+                email,
+                password,
+                confirm_password: confirmPassword
+                // NOTE: No role/is_staff field — backend enforces is_staff=False
+            });
+
             if (result.success) {
                 app.currentUser = result.user;
                 updateAuthUI();
                 closeAuthModal();
-                showToast('Registration successful!', 'success');
+                showToast('Registration successful! Welcome, ' + result.user.username, 'success');
+                navigateToPage('dashboard');
             } else {
                 showToast(result.message || 'Registration failed', 'error');
             }
         });
     }
-    
-    // Worker registration form
+
+    // ---- Worker registration form (non-auth, localStorage-based UI feature) ----
     if (elements.workerRegisterForm) {
         elements.workerRegisterForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const formData = new FormData(elements.workerRegisterForm);
-            
             const workerData = {
                 name: formData.get('name'),
                 phone: formData.get('phone'),
                 email: formData.get('email') || null,
                 jobRole: formData.get('jobRole'),
                 experience: parseInt(formData.get('experience')) || 0,
-                address: formData.get('address') || '',
-                password: formData.get('password')
+                address: formData.get('address') || ''
             };
-            
             const result = app.authManager.registerWorker(workerData);
             if (result.success) {
                 closeAuthModal();
-                showToast('Worker registration successful!', 'success');
-                if (app.currentPage === 'workers') {
-                    loadWorkers();
-                }
+                showToast('Worker registered successfully!', 'success');
+                if (app.currentPage === 'workers') loadWorkers();
             } else {
                 showToast(result.message || 'Registration failed', 'error');
             }
         });
     }
-    
+
     // Show register from login
     if (elements.showRegister) {
         elements.showRegister.addEventListener('click', (e) => {
@@ -1324,7 +1339,7 @@ function initAuth() {
             openAuthModal('register');
         });
     }
-    
+
     // Show login from register
     if (elements.showLogin) {
         elements.showLogin.addEventListener('click', (e) => {
@@ -1333,7 +1348,7 @@ function initAuth() {
             openAuthModal('login');
         });
     }
-    
+
     // Register as worker link
     if (elements.registerWorkerLink) {
         elements.registerWorkerLink.addEventListener('click', (e) => {
@@ -1341,30 +1356,28 @@ function initAuth() {
             openAuthModal('worker');
         });
     }
-    
-    // Logout
+
+    // ---- Logout ----
     if (elements.logoutLink) {
-        elements.logoutLink.addEventListener('click', (e) => {
+        elements.logoutLink.addEventListener('click', async (e) => {
             e.preventDefault();
-            app.authManager.logout();
+            await app.authManager.logout();
             app.currentUser = null;
             updateAuthUI();
             showToast('Logged out successfully', 'success');
             navigateToPage('home');
         });
     }
-    
+
     // Close modals on close button
     document.querySelectorAll('.auth-modal .modal-close').forEach(btn => {
         btn.addEventListener('click', closeAuthModal);
     });
-    
+
     // Close modals on outside click
     document.querySelectorAll('.auth-modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeAuthModal();
-            }
+            if (e.target === modal) closeAuthModal();
         });
     });
 }
@@ -1416,6 +1429,55 @@ function updateAuthUI() {
         if (elements.userProfileBtn) elements.userProfileBtn.style.display = 'none';
         if (elements.logoutLink) elements.logoutLink.style.display = 'none';
     }
+    updateNavigation();
+}
+
+function updateNavigation() {
+    let pagesToShow = [];
+    if (!app.currentUser) {
+        // Unauthenticated visitor
+        pagesToShow = ['home', 'track', 'workers', 'reviews'];
+    } else if (app.currentUser.is_admin) {
+        // Admin
+        pagesToShow = ['home', 'admin'];
+    } else {
+        // Normal logged-in user
+        pagesToShow = ['home', 'submit', 'track', 'dashboard', 'workers', 'reviews'];
+    }
+
+    // Desktop nav menu
+    document.querySelectorAll('.nav-menu li').forEach(li => {
+        const link = li.querySelector('a');
+        if (link) {
+            const page = link.getAttribute('data-page');
+            if (pagesToShow.includes(page)) {
+                li.style.display = 'block';
+            } else {
+                li.style.display = 'none';
+            }
+        }
+    });
+
+    // Dropdown menu
+    document.querySelectorAll('.dropdown-menu li').forEach(li => {
+        const link = li.querySelector('a');
+        if (link) {
+            const page = link.getAttribute('data-page');
+            if (link.id === 'logout-link') {
+                li.style.display = app.currentUser ? 'block' : 'none';
+            } else if (link.id === 'register-worker-link') {
+                li.style.display = (app.currentUser && !app.currentUser.is_admin) ? 'block' : 'none';
+            } else if (page) {
+                if (pagesToShow.includes(page)) {
+                    li.style.display = 'block';
+                } else {
+                    li.style.display = 'none';
+                }
+            }
+        } else if (li.classList.contains('dropdown-divider')) {
+            li.style.display = app.currentUser ? 'block' : 'none';
+        }
+    });
 }
 
 // ===== Navigation =====
@@ -1502,6 +1564,27 @@ function initNavigation() {
 }
 
 function navigateToPage(page) {
+    // Route authorization guards
+    if (page === 'admin') {
+        if (!app.currentUser) {
+            showToast('Authentication required. Please log in.', 'error');
+            openAuthModal('login');
+            window.location.hash = 'home';
+            page = 'home';
+        } else if (!app.currentUser.is_admin) {
+            showToast('Access denied: Admin permissions required.', 'error');
+            window.location.hash = 'home';
+            page = 'home';
+        }
+    } else if (page === 'submit' || page === 'dashboard') {
+        if (!app.currentUser) {
+            showToast('Authentication required. Please log in.', 'error');
+            openAuthModal('login');
+            window.location.hash = 'home';
+            page = 'home';
+        }
+    }
+
     // Update active nav link
     elements.navLinks.forEach(link => {
         link.classList.remove('active');
@@ -1528,14 +1611,18 @@ function navigateToPage(page) {
     });
 
     // Close mobile menu
-    elements.navMenu.classList.remove('active');
-    elements.navToggle.setAttribute('aria-expanded', 'false');
+    if (elements.navMenu && elements.navToggle) {
+        elements.navMenu.classList.remove('active');
+        elements.navToggle.setAttribute('aria-expanded', 'false');
+    }
 
     // Load page-specific content
     if (page === 'home') {
         loadHomePage();
     } else if (page === 'dashboard') {
         loadDashboard();
+    } else if (page === 'admin') {
+        loadAdminDashboard();
     } else if (page === 'submit') {
         initMap();
         if (elements.submitSuccess) {
@@ -1589,15 +1676,69 @@ function initMap() {
                     const userLocation = [position.coords.latitude, position.coords.longitude];
                     app.map.setView(userLocation, 15);
                     app.marker.setLatLng(userLocation);
-                    // Optionally set location on geolocation success
-                    // setLocation(userLocation[0], userLocation[1]);
                 },
                 () => {
-                    // User denied geolocation or error occurred
                     console.log('Geolocation not available');
                 }
             );
         }
+    }
+
+    // Bind map location search controls
+    const searchBtn = document.getElementById('search-location-btn');
+    if (searchBtn && !searchBtn.dataset.bound) {
+        searchBtn.dataset.bound = 'true';
+        searchBtn.addEventListener('click', handleAddressSearch);
+    }
+    if (elements.issueLocation && !elements.issueLocation.dataset.bound) {
+        elements.issueLocation.dataset.bound = 'true';
+        elements.issueLocation.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddressSearch();
+            }
+        });
+        elements.issueLocation.addEventListener('blur', handleAddressSearch);
+    }
+}
+
+let lastSearchedAddress = '';
+async function handleAddressSearch() {
+    if (!elements.issueLocation) return;
+    const address = elements.issueLocation.value.trim();
+    if (!address || address === lastSearchedAddress) return;
+    
+    lastSearchedAddress = address;
+    showToast('Searching address location...', 'info');
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        if (!res.ok) {
+            showToast('Geocoding search failed. Please try again.', 'error');
+            return;
+        }
+        const data = await res.json();
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lng = parseFloat(data[0].lon);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                app.selectedLocation = { lat, lng };
+                if (app.marker && app.map) {
+                    app.marker.setLatLng([lat, lng]);
+                    app.map.setView([lat, lng], 15);
+                }
+                if (elements.issueLat) elements.issueLat.value = lat;
+                if (elements.issueLng) elements.issueLng.value = lng;
+                showToast('Location updated on map!', 'success');
+            } else {
+                showToast('Invalid coordinates received for this address', 'error');
+            }
+        } else {
+            showToast('No location found for this address', 'error');
+        }
+    } catch (err) {
+        console.error('Address search error:', err);
+        showToast('Network error while searching address', 'error');
     }
 }
 
@@ -1731,35 +1872,44 @@ function submitIssue(formData, imageData) {
         userId: app.currentUser ? app.currentUser.id : null
     };
 
-    fetch('http://127.0.0.1:8000/api/issues/submit/', {
+    const submitBtn = elements.issueForm ? elements.issueForm.querySelector('button[type="submit"]') : null;
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Submitting Complaint...';
+    }
+
+    fetch(`${API_BASE}/api/issues/submit/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',   // Send Django session cookie
         body: JSON.stringify(issueData)
     })
-    .then(res => res.json())
-    .then(data => {
-        if(data.issue) {
+    .then(async res => {
+        if (res.status === 401) {
+            showToast('Please log in to submit an issue', 'error');
+            openAuthModal('login');
+            return;
+        }
+        const data = await res.json();
+        if (data.issue) {
             // Restore local properties not maintained by server but needed by UI
             data.issue.addressDetails = issueData.addressDetails;
             data.issue.type = issueData.type;
-            data.issue.userId = issueData.userId;
             data.issue.customerCareNumber = '+91-1800-123-4567';
 
             const newIssue = app.issueManager.addIssue(data.issue);
-            
-            // Show success message with issue ID
+
             if (elements.submitSuccess && elements.submittedIssueId) {
                 elements.submittedIssueId.textContent = newIssue.id;
                 elements.issueForm.style.display = 'none';
                 elements.submitSuccess.style.display = 'block';
-                
-                // Track submitted issue button
+
                 if (elements.trackSubmittedIssue) {
                     elements.trackSubmittedIssue.addEventListener('click', () => {
                         navigateToPage('track');
                         if (elements.trackIssueId) {
                             elements.trackIssueId.value = newIssue.id;
-                            // Assumes trackIssue() exists
                             if (typeof trackIssue === 'function') trackIssue(newIssue.id);
                         }
                     });
@@ -1767,7 +1917,7 @@ function submitIssue(formData, imageData) {
             } else {
                 showToast('Issue submitted successfully! Your Issue ID: ' + newIssue.id, 'success');
             }
-            
+
             // Reset form
             elements.issueForm.reset();
             elements.imagePreview.style.display = 'none';
@@ -1779,11 +1929,17 @@ function submitIssue(formData, imageData) {
                 elements.issueLocation.value = '';
             }
         } else {
-            showToast('Error: ' + data.error, 'error');
+            showToast('Error: ' + (data.error || 'Submission failed'), 'error');
         }
     })
     .catch(error => {
         showToast('Submission failed: ' + error.message, 'error');
+    })
+    .finally(() => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+        }
     });
 }
 
@@ -1978,19 +2134,21 @@ function initFilters() {
 
 // ===== Home Page =====
 function loadHomePage() {
-    const stats = app.issueManager.getStats();
-    
-    if (elements.totalIssues) {
-        elements.totalIssues.textContent = stats.total;
-    }
-    if (elements.openIssues) {
-        elements.openIssues.textContent = stats.open;
-    }
-    if (elements.resolvedIssues) {
-        elements.resolvedIssues.textContent = stats.resolved;
-    }
+    fetch(`${API_BASE}/api/issues/stats/`)
+        .then(res => res.json())
+        .then(stats => {
+            if (elements.totalIssues) elements.totalIssues.textContent = stats.total || 0;
+            if (elements.openIssues) elements.openIssues.textContent = stats.open || 0;
+            if (elements.resolvedIssues) elements.resolvedIssues.textContent = stats.resolved || 0;
+        })
+        .catch(() => {
+            const stats = app.issueManager.getStats();
+            if (elements.totalIssues) elements.totalIssues.textContent = stats.total;
+            if (elements.openIssues) elements.openIssues.textContent = stats.open;
+            if (elements.resolvedIssues) elements.resolvedIssues.textContent = stats.resolved;
+        });
 
-    // Show solved issues (resolved issues with images)
+    // Show solved issues
     const solvedIssues = app.issueManager.getAllIssues()
         .filter(issue => issue.status === 'resolved' && issue.image)
         .slice(0, 6);
@@ -2287,8 +2445,42 @@ function formatDate(dateString) {
 // Make openCommentModal available globally for onclick handlers
 window.openCommentModal = openCommentModal;
 
+// Global delete action
+function deleteIssuePrompt(issueId) {
+    if (!confirm('Are you sure you want to delete this issue? Admin permissions required.')) return;
+
+    fetch(`${API_BASE}/api/issues/${issueId}/delete/`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+    .then(async res => {
+        if (res.status === 401) {
+            showToast('Authentication required to delete issues', 'error');
+            return;
+        }
+        if (res.status === 403) {
+            showToast('Permission denied. Admin privileges required to delete issues', 'error');
+            return;
+        }
+        if (res.ok) {
+            showToast('Issue deleted successfully', 'success');
+            app.issueManager.issues = app.issueManager.issues.filter(i => i.id !== issueId);
+            app.issueManager.saveIssues();
+            if (app.currentPage === 'dashboard') loadDashboard();
+            else if (app.currentPage === 'home') loadHomePage();
+        } else {
+            const data = await res.json();
+            showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Delete failed: ' + err.message, 'error');
+    });
+}
+window.deleteIssuePrompt = deleteIssuePrompt;
+
 // ===== Track Issue =====
-function trackIssue(issueId) {
+async function trackIssue(issueId) {
     if (!issueId) {
         issueId = elements.trackIssueId?.value?.trim();
     }
@@ -2298,229 +2490,103 @@ function trackIssue(issueId) {
         return;
     }
 
-    const issue = app.issueManager.getIssue(issueId);
-    
-    if (!issue) {
+    try {
+        const res = await fetch(`${API_BASE}/api/issues/track/${issueId}/`, {
+            credentials: 'include'
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.found) {
+            if (elements.trackIssueResult) {
+                elements.trackIssueResult.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <p style="color: var(--danger-color); font-size: 1.125rem; margin-bottom: 1rem;">
+                            Issue not found (${escapeHtml(issueId)}). Please check your Track ID.
+                        </p>
+                        <p style="color: var(--text-secondary);">
+                            If you need assistance, please contact Customer Care:
+                        </p>
+                        <a href="tel:+91-1800-123-4567" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">
+                            📞 Call Customer Care: +91-1800-123-4567
+                        </a>
+                    </div>
+                `;
+                elements.trackIssueResult.style.display = 'block';
+            }
+            return;
+        }
+
+        const issue = data.issue;
+        const statusSteps = [
+            { key: 'submitted', label: 'Submitted' },
+            { key: 'dispatched', label: 'Dispatched' },
+            { key: 'in-progress', label: 'In Progress' },
+            { key: 'otp-verification', label: 'OTP Verification' },
+            { key: 'resolved', label: 'Resolved' }
+        ];
+
+        const statusMap = {
+            'submitted': 0,
+            'pending': 0,
+            'dispatched': 1,
+            'in-progress': 2,
+            'otp-verification': 3,
+            'resolved': 4
+        };
+
+        const currentStepIndex = statusMap[issue.status] !== undefined ? statusMap[issue.status] : 0;
+        let statusProgressHtml = '<div class="status-timeline">';
+        statusSteps.forEach((step, idx) => {
+            let cls = idx < currentStepIndex ? 'completed' : (idx === currentStepIndex ? 'current' : '');
+            const iconSymbol = idx < currentStepIndex ? '✓' : (idx + 1);
+            statusProgressHtml += `
+                <div class="timeline-step ${cls}">
+                    <div class="timeline-icon">${iconSymbol}</div>
+                    <div class="timeline-label">${step.label}</div>
+                </div>
+            `;
+        });
+        statusProgressHtml += '</div>';
+
         if (elements.trackIssueResult) {
             elements.trackIssueResult.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <p style="color: var(--danger-color); font-size: 1.125rem; margin-bottom: 1rem;">
-                        Issue not found. Please check your Issue ID.
-                    </p>
-                    <p style="color: var(--text-secondary);">
-                        If you need assistance, please contact Customer Care:
-                    </p>
-                    <a href="tel:+91-1800-123-4567" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">
-                        📞 Call Customer Care: +91-1800-123-4567
-                    </a>
+                <div class="track-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Official Track ID</span>
+                            <h3 style="font-size: 1.4rem; color: var(--primary-color); margin-top: 0.2rem;"><code>${escapeHtml(issue.id)}</code></h3>
+                        </div>
+                        <span class="issue-status status-${issue.status}">${escapeHtml(issue.status.toUpperCase())}</span>
+                    </div>
+                    
+                    <h4 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">${escapeHtml(issue.title)}</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">${escapeHtml(issue.description || '')}</p>
+
+                    ${statusProgressHtml}
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; background: var(--bg-tertiary); padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.875rem; margin-top: 1.5rem;">
+                        <div><strong>Category:</strong> ${escapeHtml(issue.category || 'General')}</div>
+                        <div><strong>Location:</strong> 📍 ${escapeHtml(issue.location || 'N/A')}</div>
+                        <div><strong>Submitted:</strong> 📅 ${formatDate(issue.createdAt)}</div>
+                        <div><strong>Last Update:</strong> ⏰ ${formatDate(issue.updatedAt || issue.createdAt)}</div>
+                    </div>
+                    
+                    ${issue.image ? `
+                        <div style="margin-top: 1.5rem;">
+                            <strong style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Attached Photo Evidence:</strong>
+                            <img src="${issue.image}" alt="Evidence photo" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        </div>
+                    ` : ''}
                 </div>
             `;
             elements.trackIssueResult.style.display = 'block';
         }
-        return;
-    }
-
-    const statusSteps = [
-        { key: 'submitted', label: 'Issue Submitted' },
-        { key: 'dispatched', label: 'Dispatched' },
-        { key: 'otp-verification', label: 'OTP Verification' },
-        { key: 'resolved', label: 'Resolved' }
-    ];
-
-    const statusMap = {
-        'submitted': 0,
-        'dispatched': 1,
-        'otp-verification': 2,
-        'resolved': 3,
-        'open': 0,
-        'in-progress': 1,
-        'escalated': 1
-    };
-
-    const currentStepIndex = statusMap[issue.status] !== undefined ? statusMap[issue.status] : 0;
-    
-    const categoryLabels = {
-        infrastructure: i18n.t('infrastructure'),
-        safety: i18n.t('safety'),
-        environment: i18n.t('environment'),
-        transportation: i18n.t('transportation'),
-        utilities: i18n.t('utilities'),
-        other: i18n.t('other')
-    };
-    
-    const statusDisplay = {
-        'submitted': 'Submitted',
-        'dispatched': 'Dispatched',
-        'otp-verification': 'OTP Verification',
-        'resolved': 'Resolved',
-        'open': 'Open',
-        'in-progress': 'In Progress',
-        'escalated': 'Escalated'
-    };
-    
-    const statusText = statusDisplay[issue.status] || issue.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    
-    let progressHtml = '<div class="track-progress">';
-    progressHtml += '<h3>' + escapeHtml(issue.title) + '</h3>';
-    progressHtml += '<div class="track-progress-bar">';
-    
-    statusSteps.forEach((step, index) => {
-        let stepClass = '';
-        if (index < currentStepIndex) {
-            stepClass = 'completed';
-        } else if (index === currentStepIndex) {
-            stepClass = 'active';
-        }
-        progressHtml += `<div class="track-step ${stepClass}">${index + 1}</div>`;
-    });
-    
-    progressHtml += '</div>';
-    progressHtml += '<div class="track-step-labels">';
-    statusSteps.forEach(step => {
-        progressHtml += `<span>${step.label}</span>`;
-    });
-    progressHtml += '</div>';
-
-    // OTP Verification section
-    if (issue.status === 'otp-verification' || issue.status === 'resolved') {
-        if (!issue.otpVerified && issue.status === 'otp-verification') {
-            const otp = app.issueManager.generateOTP(issueId);
-            progressHtml += `
-                <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-secondary); border-radius: var(--radius-md);">
-                    <h4>OTP Verification</h4>
-                    <p>Your OTP: <strong style="font-size: 1.5rem; color: var(--primary-color);">${otp}</strong></p>
-                    <p style="font-size: 0.875rem; color: var(--text-secondary);">Please verify this OTP to mark the issue as resolved.</p>
-                    <button class="btn btn-primary" onclick="verifyOTPAndResolve('${issueId}')">Verify OTP & Resolve</button>
-                </div>
-            `;
-        }
-    }
-
-    // Done button for resolved issues
-    if (issue.status === 'resolved') {
-        progressHtml += `
-            <div class="done-btn-container">
-                <button class="btn btn-primary" onclick="markIssueDone('${issueId}')">Done</button>
-            </div>
-        `;
-    }
-
-    progressHtml += '</div>';
-    
-    // Add Issue ID prominently
-    progressHtml += `
-        <div class="track-issue-id" style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius-md); margin: 1.5rem 0; text-align: center;">
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">${i18n.t('issueId')}</p>
-            <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); letter-spacing: 2px;">${escapeHtml(issue.id)}</p>
-        </div>
-    `;
-    
-    // Add image if available
-    if (issue.image) {
-        progressHtml += `
-            <div class="track-image" style="margin: 1.5rem 0;">
-                <h4>Uploaded Image</h4>
-                <img src="${issue.image}" alt="Issue Image" style="max-width: 100%; border-radius: var(--radius-md); border: 2px solid var(--border-color); margin-top: 1rem;">
-            </div>
-        `;
-    }
-    
-    // Add complete address details
-    if (issue.addressDetails) {
-        const addr = issue.addressDetails;
-        progressHtml += `
-            <div class="track-address" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-                <h4>Complete Address Details</h4>
-                <div style="margin-top: 1rem; line-height: 1.8;">
-                    ${addr.houseNumber ? `<p><strong>House Number:</strong> ${escapeHtml(addr.houseNumber)}</p>` : ''}
-                    ${addr.streetName ? `<p><strong>Street Name:</strong> ${escapeHtml(addr.streetName)}</p>` : ''}
-                    ${addr.villageName ? `<p><strong>Village Name:</strong> ${escapeHtml(addr.villageName)}</p>` : ''}
-                    ${addr.mandal ? `<p><strong>Mandal:</strong> ${escapeHtml(addr.mandal)}</p>` : ''}
-                    ${addr.district ? `<p><strong>District:</strong> ${escapeHtml(addr.district)}</p>` : ''}
-                    ${addr.pincode ? `<p><strong>Pincode:</strong> ${escapeHtml(addr.pincode)}</p>` : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Add payment information for private issues
-    if (issue.type === 'private' && issue.estimatedBudget) {
-        progressHtml += `
-            <div class="track-payment" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; color: white;">
-                <h4 style="color: white; margin-bottom: 1rem;">💳 Payment Information</h4>
-                <p style="margin: 0.5rem 0; color: white;"><strong>Estimated Budget:</strong> ₹${issue.estimatedBudget}</p>
-                <p style="margin: 0.5rem 0; color: white;"><strong>Payment Status:</strong> ${issue.paymentStatus === 'paid' ? '✅ Paid' : issue.paymentStatus === 'pending' ? '⏳ Pending' : '❌ Not Paid'}</p>
-                ${issue.status === 'resolved' && issue.paymentStatus !== 'paid' ? `
-                    <button class="btn btn-primary" onclick="processPayment('${issueId}')" style="margin-top: 1rem; background: white; color: #10b981; border: none; font-weight: 600;">
-                        💳 Pay Now (₹${issue.estimatedBudget})
-                    </button>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Add issue details
-    progressHtml += `
-        <div class="track-details" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-            <h4>Issue Details</h4>
-            <div style="margin-top: 1rem; line-height: 1.8;">
-                <p><strong>Title:</strong> ${escapeHtml(issue.title)}</p>
-                <p><strong>Description:</strong> ${escapeHtml(issue.description)}</p>
-                <p><strong>Category:</strong> ${categoryLabels[issue.category] || issue.category}</p>
-                <p><strong>Status:</strong> <span class="issue-status status-${issue.status}">${statusText}</span></p>
-                <p><strong>Created At:</strong> ${formatDate(issue.createdAt)}</p>
-            </div>
-        </div>
-    `;
-    
-    // Add priority information
-    if (issue.priority) {
-        const priorityLabels = {
-            critical: i18n.t('critical'),
-            moderate: i18n.t('moderate'),
-            minor: i18n.t('minor')
-        };
-        progressHtml += `
-            <div class="track-priority" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-                <h4>${i18n.t('priority')}</h4>
-                <p class="priority-badge priority-${issue.priority}" style="display: inline-block; margin-top: 0.5rem;">${priorityLabels[issue.priority]}</p>
-            </div>
-        `;
-    }
-    
-    // Add representative information
-    if (issue.assignedTo) {
-        progressHtml += `
-            <div class="track-representative" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-                <h4>${i18n.t('assignedTo')}</h4>
-                <div style="margin-top: 1rem; line-height: 1.8;">
-                    <p><strong>${escapeHtml(issue.assignedTo.name)}</strong></p>
-                    <p>${i18n.t('phoneNumber')}: <a href="tel:${issue.assignedTo.phone}" style="color: var(--primary-color); text-decoration: none;">${escapeHtml(issue.assignedTo.phone)}</a></p>
-                    ${issue.expectedResolution ? `<p>${i18n.t('expectedResolution')}: ${formatDate(issue.expectedResolution)}</p>` : ''}
-                    ${issue.assignedTo.rating ? `<p>Rating: ${issue.assignedTo.rating.toFixed(1)} ⭐</p>` : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Add Customer Care Call Button
-    const customerCareNumber = issue.customerCareNumber || '+91-1800-123-4567';
-    progressHtml += `
-        <div class="track-customer-care" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; text-align: center; color: white;">
-            <h4 style="color: white; margin-bottom: 1rem;">${i18n.t('callCustomerCare')}</h4>
-            <p style="margin-bottom: 1rem; opacity: 0.9;">${i18n.t('customerCareNumber')}</p>
-            <a href="tel:${customerCareNumber}" class="btn btn-primary" style="background: white; color: var(--primary-color); padding: 0.75rem 2rem; font-size: 1.125rem; font-weight: 600; display: inline-block; text-decoration: none; border-radius: var(--radius-md); margin-top: 0.5rem;">
-                📞 ${customerCareNumber}
-            </a>
-            <p style="margin-top: 1rem; font-size: 0.875rem; opacity: 0.8;">Call our customer care team for assistance with your issue</p>
-        </div>
-    `;
-
-    if (elements.trackIssueResult) {
-        elements.trackIssueResult.innerHTML = progressHtml;
-        elements.trackIssueResult.style.display = 'block';
+    } catch (e) {
+        showToast('Tracking request failed: ' + e.message, 'error');
     }
 }
+
+
 
 function verifyOTPAndResolve(issueId) {
     const issue = app.issueManager.getIssue(issueId);
@@ -2810,11 +2876,13 @@ class VoiceRecognition {
             
             this.recognition.onend = () => {
                 this.isListening = false;
+                const btn = document.getElementById('voice-record-btn');
+                if (btn) {
+                    btn.textContent = i18n.t('startRecording');
+                    btn.classList.remove('recording-active');
+                }
                 if (document.getElementById('voice-status')) {
                     document.getElementById('voice-status').textContent = '';
-                }
-                if (document.getElementById('voice-record-btn')) {
-                    document.getElementById('voice-record-btn').textContent = i18n.t('startRecording');
                 }
             };
         }
@@ -2835,11 +2903,13 @@ class VoiceRecognition {
         this.transcript = '';
         this.recognition.start();
         
+        const btn = document.getElementById('voice-record-btn');
+        if (btn) {
+            btn.textContent = i18n.t('stopRecording');
+            btn.classList.add('recording-active');
+        }
         if (document.getElementById('voice-status')) {
             document.getElementById('voice-status').textContent = i18n.t('listening');
-        }
-        if (document.getElementById('voice-record-btn')) {
-            document.getElementById('voice-record-btn').textContent = i18n.t('stopRecording');
         }
     }
     
@@ -2847,6 +2917,11 @@ class VoiceRecognition {
         if (this.recognition && this.isListening) {
             this.recognition.stop();
             this.isListening = false;
+            const btn = document.getElementById('voice-record-btn');
+            if (btn) {
+                btn.textContent = i18n.t('startRecording');
+                btn.classList.remove('recording-active');
+            }
         }
     }
     
@@ -2878,69 +2953,8 @@ class VoiceRecognition {
     }
 }
 
-// ===== Community Features =====
-class CommunityManager {
-    constructor() {
-        this.storageKey = 'SamadhanSetuCommunity';
-    }
-    
-    getLeaderboard() {
-        const stored = localStorage.getItem('SamadhanSetuLeaderboard');
-        if (stored) {
-            return JSON.parse(stored);
-        }
-        // Initialize with default data
-        const defaults = [
-            { userId: 'user1', name: 'Active Citizen 1', issuesReported: 25, upvotes: 120, rank: 1 },
-            { userId: 'user2', name: 'Active Citizen 2', issuesReported: 20, upvotes: 95, rank: 2 },
-            { userId: 'user3', name: 'Active Citizen 3', issuesReported: 18, upvotes: 85, rank: 3 }
-        ];
-        localStorage.setItem('SamadhanSetuLeaderboard', JSON.stringify(defaults));
-        return defaults;
-    }
-    
-    getPolls() {
-        const stored = localStorage.getItem('SamadhanSetuPolls');
-        if (stored) {
-            return JSON.parse(stored);
-        }
-        return [];
-    }
-    
-    createPoll(question, options) {
-        const polls = this.getPolls();
-        const newPoll = {
-            id: 'poll_' + Date.now(),
-            question: question,
-            options: options.map(opt => ({ text: opt, votes: 0 })),
-            createdAt: new Date().toISOString(),
-            votedBy: []
-        };
-        polls.push(newPoll);
-        localStorage.setItem('SamadhanSetuPolls', JSON.stringify(polls));
-        return newPoll;
-    }
-    
-    votePoll(pollId, optionIndex) {
-        const polls = this.getPolls();
-        const poll = polls.find(p => p.id === pollId);
-        if (!poll) return null;
-        
-        const userId = app.issueManager.currentUser;
-        if (poll.votedBy.includes(userId)) {
-            return null; // Already voted
-        }
-        
-        poll.options[optionIndex].votes++;
-        poll.votedBy.push(userId);
-        localStorage.setItem('SamadhanSetuPolls', JSON.stringify(polls));
-        return poll;
-    }
-}
-
 // ===== Initialize Application =====
 const voiceRecognition = new VoiceRecognition();
-const communityManager = new CommunityManager();
 
 // ===== Language Changer Initialization =====
 function initLanguageChanger() {
@@ -3223,13 +3237,12 @@ function renderWorkers(workers) {
                 ${worker.address ? `<p class="worker-address">📍 ${escapeHtml(worker.address)}</p>` : ''}
             </div>
             <div class="worker-actions">
-                <button class="btn btn-primary btn-sm select-worker-btn" data-worker-id="${worker.id}">
-                    Select Worker
-                </button>
+                <button class="btn btn-primary btn-sm select-worker-btn" data-worker-id="${worker.id}">Select Worker</button>
             </div>
         `;
-        
-        // Add select worker button handler
+
+        elements.workersList.appendChild(card);
+
         const selectBtn = card.querySelector('.select-worker-btn');
         if (selectBtn) {
             selectBtn.addEventListener('click', () => {
@@ -3239,33 +3252,12 @@ function renderWorkers(workers) {
                         elements.preferredWorkerSelect.value = worker.id;
                     }
                     navigateToPage('submit');
-                    // Switch to private form
-                    const privateBtn = document.querySelector('[data-type="private"]');
-                    if (privateBtn) privateBtn.click();
                     showToast('Worker selected!', 'success');
                 } else {
                     showToast('Please go to Submit Issue page to select a worker', 'info');
                 }
             });
         }
-        
-        elements.workersList.appendChild(card);
-    });
-}
-
-function updateWorkerDropdown(workers) {
-    if (!elements.preferredWorkerSelect) return;
-    
-    // Clear existing options except first
-    while (elements.preferredWorkerSelect.options.length > 1) {
-        elements.preferredWorkerSelect.remove(1);
-    }
-    
-    workers.forEach(worker => {
-        const option = document.createElement('option');
-        option.value = worker.id;
-        option.textContent = `${worker.name} (${worker.jobRole}) - Rating: ${(worker.rating || 0).toFixed(1)} ⭐`;
-        elements.preferredWorkerSelect.appendChild(option);
     });
 }
 
@@ -3283,155 +3275,186 @@ function initWorkersPage() {
     }
 }
 
-// ===== Agent Dashboard =====
-function initAgentDashboard() {
-    if (elements.agentSearchBtn) {
-        elements.agentSearchBtn.addEventListener('click', () => {
-            searchAgentIssue();
+// ===== Admin Dashboard =====
+let adminIssuesCache = [];
+
+function initAdminDashboard() {
+    if (elements.adminRefreshBtn) {
+        elements.adminRefreshBtn.addEventListener('click', () => {
+            loadAdminDashboard();
         });
     }
+    if (elements.adminSearchInput) {
+        elements.adminSearchInput.addEventListener('input', renderAdminIssuesList);
+    }
+    if (elements.adminFilterStatus) {
+        elements.adminFilterStatus.addEventListener('change', renderAdminIssuesList);
+    }
+}
+
+async function loadAdminDashboard() {
+    if (!app.currentUser || !app.currentUser.is_admin) return;
     
-    if (elements.agentWorkId) {
-        elements.agentWorkId.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                searchAgentIssue();
+    try {
+        const res = await fetch(`${API_BASE}/api/issues/all/`, {
+            credentials: 'include'
+        });
+        if (res.status === 401 || res.status === 403) {
+            showToast('Access denied: Admin permissions required.', 'error');
+            navigateToPage('home');
+            return;
+        }
+        if (!res.ok) {
+            throw new Error(`Server status ${res.status}`);
+        }
+        const issues = await res.json();
+        adminIssuesCache = issues || [];
+        
+        updateAdminStats(adminIssuesCache);
+        renderAdminIssuesList();
+    } catch (err) {
+        console.error('Failed to load admin issues:', err);
+        showToast('Error loading complaints: ' + err.message, 'error');
+    }
+}
+
+function updateAdminStats(issues) {
+    const total = issues.length;
+    const pending = issues.filter(i => ['submitted', 'pending', 'open'].includes(i.status)).length;
+    const progress = issues.filter(i => ['dispatched', 'in-progress', 'otp-verification'].includes(i.status)).length;
+    const resolved = issues.filter(i => i.status === 'resolved').length;
+    
+    if (elements.adminTotalIssues) elements.adminTotalIssues.textContent = total;
+    if (elements.adminPendingIssues) elements.adminPendingIssues.textContent = pending;
+    if (elements.adminProgressIssues) elements.adminProgressIssues.textContent = progress;
+    if (elements.adminResolvedIssues) elements.adminResolvedIssues.textContent = resolved;
+}
+
+function renderAdminIssuesList() {
+    if (!elements.adminIssuesList) return;
+    
+    const searchVal = (elements.adminSearchInput?.value || '').toLowerCase().trim();
+    const statusVal = elements.adminFilterStatus?.value || '';
+    
+    const filtered = adminIssuesCache.filter(issue => {
+        const matchesSearch = !searchVal || 
+            (issue.id && issue.id.toLowerCase().includes(searchVal)) || 
+            (issue.title && issue.title.toLowerCase().includes(searchVal)) ||
+            (issue.location && issue.location.toLowerCase().includes(searchVal));
+        const matchesStatus = !statusVal || issue.status === statusVal;
+        return matchesSearch && matchesStatus;
+    });
+
+    if (filtered.length === 0) {
+        elements.adminIssuesList.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                <p style="font-size: 1.2rem; font-weight: 500;">No complaints match the filter criteria.</p>
+            </div>
+        `;
+        return;
+    }
+
+    elements.adminIssuesList.innerHTML = filtered.map(issue => {
+        const statusClass = `status-${(issue.status || 'submitted').replace('-', '-')}`;
+        const imageUrl = issue.image ? (issue.image.startsWith('http') ? issue.image : `${API_BASE}${issue.image}`) : null;
+        
+        return `
+            <div class="issue-card" data-issue-id="${escapeHtml(issue.id)}">
+                ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(issue.title)}" class="issue-image">` : ''}
+                <div class="issue-content">
+                    <div class="issue-header">
+                        <h3 class="issue-title">${escapeHtml(issue.title)}</h3>
+                        <span class="issue-status ${statusClass}">${escapeHtml(issue.status)}</span>
+                    </div>
+                    <p class="issue-description">${escapeHtml(issue.description || 'No description provided')}</p>
+                    <div class="issue-meta" style="margin-bottom: 1rem;">
+                        <span>📋 ID: <strong>${escapeHtml(issue.id)}</strong></span>
+                        <span>🏷️ Category: ${escapeHtml(issue.category)}</span>
+                        <span>📍 ${escapeHtml(issue.location || 'Not specified')}</span>
+                        <span>📅 ${formatDate(issue.createdAt || issue.created_at)}</span>
+                        ${issue.username ? `<span>👤 By: ${escapeHtml(issue.username)}</span>` : ''}
+                    </div>
+                    <div class="admin-card-actions" style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        <div class="status-change-wrapper" style="flex: 1;">
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Change Status:</label>
+                            <select class="admin-status-select" data-id="${escapeHtml(issue.id)}" style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9rem;">
+                                <option value="submitted" ${issue.status === 'submitted' ? 'selected' : ''}>Submitted</option>
+                                <option value="dispatched" ${issue.status === 'dispatched' ? 'selected' : ''}>Dispatched</option>
+                                <option value="in-progress" ${issue.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="otp-verification" ${issue.status === 'otp-verification' ? 'selected' : ''}>OTP Verification</option>
+                                <option value="resolved" ${issue.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                                <option value="rejected" ${issue.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary btn-sm admin-delete-btn" data-id="${escapeHtml(issue.id)}" title="Delete Complaint" style="margin-top: 1.2rem; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Attach status update event listeners
+    elements.adminIssuesList.querySelectorAll('.admin-status-select').forEach(select => {
+        select.addEventListener('change', async (e) => {
+            const issueId = select.getAttribute('data-id');
+            const newStatus = select.value;
+            await updateAdminIssueStatus(issueId, newStatus);
+        });
+    });
+
+    // Attach delete event listeners
+    elements.adminIssuesList.querySelectorAll('.admin-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const issueId = btn.getAttribute('data-id');
+            if (confirm(`Are you sure you want to delete complaint ${issueId}?`)) {
+                await deleteAdminIssue(issueId);
             }
         });
-    }
+    });
 }
 
-function searchAgentIssue() {
-    const workId = elements.agentWorkId?.value?.trim();
-    
-    if (!workId) {
-        showToast('Please enter a Work ID or Issue ID', 'error');
-        return;
-    }
-    
-    const issue = app.issueManager.getIssue(workId);
-    
-    if (!issue) {
-        if (elements.agentResult) {
-            elements.agentResult.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <p style="color: var(--danger-color); font-size: 1.125rem; margin-bottom: 1rem;">
-                        Issue not found. Please check the Work ID.
-                    </p>
-                    <div style="margin-top: 2rem;">
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                            Need help? Contact Customer Care:
-                        </p>
-                        <a href="tel:+91-1800-123-4567" class="btn btn-primary">
-                            📞 Call Customer Care: +91-1800-123-4567
-                        </a>
-                    </div>
-                </div>
-            `;
-            elements.agentResult.style.display = 'block';
+async function updateAdminIssueStatus(issueId, newStatus) {
+    try {
+        showToast('Updating status...', 'info');
+        const res = await fetch(`${API_BASE}/api/issues/${issueId}/status/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`Status updated to '${newStatus}' for ${issueId}`, 'success');
+            loadAdminDashboard();
+        } else {
+            showToast(data.error || 'Failed to update status', 'error');
         }
-        return;
+    } catch (err) {
+        showToast('Network error updating status', 'error');
+        console.error(err);
     }
-    
-    // Display issue details for agent
-    displayAgentIssueDetails(issue);
 }
 
-function displayAgentIssueDetails(issue) {
-    const categoryLabels = {
-        infrastructure: 'Infrastructure',
-        safety: 'Safety',
-        environment: 'Environment',
-        transportation: 'Transportation',
-        utilities: 'Utilities',
-        other: 'Other'
-    };
-    
-    const statusDisplay = {
-        'submitted': 'Submitted',
-        'dispatched': 'Dispatched',
-        'otp-verification': 'OTP Verification',
-        'resolved': 'Resolved',
-        'open': 'Open',
-        'in-progress': 'In Progress',
-        'escalated': 'Escalated'
-    };
-    
-    let html = `
-        <div class="agent-issue-details">
-            <div class="agent-issue-header">
-                <h3>${escapeHtml(issue.title)}</h3>
-                <span class="issue-status status-${issue.status}">${statusDisplay[issue.status] || issue.status}</span>
-            </div>
-            
-            <div class="agent-issue-info">
-                <div class="info-section">
-                    <h4>Issue ID</h4>
-                    <p class="issue-id-display">${escapeHtml(issue.id)}</p>
-                </div>
-                
-                <div class="info-section">
-                    <h4>Description</h4>
-                    <p>${escapeHtml(issue.description)}</p>
-                </div>
-                
-                <div class="info-section">
-                    <h4>Category</h4>
-                    <p>${categoryLabels[issue.category] || issue.category}</p>
-                </div>
-                
-                <div class="info-section">
-                    <h4>Status</h4>
-                    <p>${statusDisplay[issue.status] || issue.status}</p>
-                </div>
-                
-                ${issue.addressDetails ? `
-                    <div class="info-section">
-                        <h4>Address Details</h4>
-                        <p>
-                            ${issue.addressDetails.houseNumber ? issue.addressDetails.houseNumber + ', ' : ''}
-                            ${issue.addressDetails.streetName}<br>
-                            ${issue.addressDetails.villageName}, ${issue.addressDetails.mandal}<br>
-                            ${issue.addressDetails.district} - ${issue.addressDetails.pincode}
-                        </p>
-                    </div>
-                ` : ''}
-                
-                ${issue.assignedTo ? `
-                    <div class="info-section">
-                        <h4>Assigned To</h4>
-                        <p>
-                            <strong>${escapeHtml(issue.assignedTo.name)}</strong><br>
-                            Phone: <a href="tel:${issue.assignedTo.phone}">${escapeHtml(issue.assignedTo.phone)}</a>
-                        </p>
-                    </div>
-                ` : ''}
-                
-                ${issue.expectedResolution ? `
-                    <div class="info-section">
-                        <h4>Expected Resolution</h4>
-                        <p>${formatDate(issue.expectedResolution)}</p>
-                    </div>
-                ` : ''}
-            </div>
-            
-            ${issue.image ? `
-                <div class="info-section">
-                    <h4>Uploaded Image</h4>
-                    <img src="${issue.image}" alt="Issue Image" style="max-width: 100%; border-radius: var(--radius-md); margin-top: 1rem;">
-                </div>
-            ` : ''}
-            
-            <div class="agent-actions">
-                <a href="tel:+91-1800-123-4567" class="btn btn-primary">
-                    📞 Call Customer Care: +91-1800-123-4567
-                </a>
-            </div>
-        </div>
-    `;
-    
-    if (elements.agentResult) {
-        elements.agentResult.innerHTML = html;
-        elements.agentResult.style.display = 'block';
+async function deleteAdminIssue(issueId) {
+    try {
+        showToast('Deleting complaint...', 'info');
+        const res = await fetch(`${API_BASE}/api/issues/${issueId}/delete/`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`Complaint ${issueId} deleted successfully`, 'success');
+            loadAdminDashboard();
+        } else {
+            showToast(data.error || 'Failed to delete complaint', 'error');
+        }
+    } catch (err) {
+        showToast('Network error deleting complaint', 'error');
+        console.error(err);
     }
 }
 
@@ -3452,86 +3475,26 @@ function init() {
     initVoiceRecording();
     initOverdueChecker();
     initWorkersPage();
-    initAgentDashboard();
+    initAdminDashboard();
     loadHomePage();
     initChatbot();
 
     // Handle hash navigation
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.slice(1);
-        if (hash && ['home', 'submit', 'dashboard'].includes(hash)) {
+        if (hash && ['home', 'submit', 'dashboard', 'track', 'reviews', 'workers', 'admin'].includes(hash)) {
             navigateToPage(hash);
         }
     });
 
     // Check initial hash
     const hash = window.location.hash.slice(1);
-    if (hash && ['home', 'submit', 'dashboard', 'track', 'reviews', 'workers', 'agent'].includes(hash)) {
+    if (hash && ['home', 'submit', 'dashboard', 'track', 'reviews', 'workers', 'admin'].includes(hash)) {
         navigateToPage(hash);
     } else {
         navigateToPage('home');
     }
     
-    // Initialize sample workers if none exist
-    initializeSampleWorkers();
-}
-
-function initializeSampleWorkers() {
-    const workers = app.authManager.getWorkers();
-    if (workers.length === 0) {
-        // Add sample workers
-        const sampleWorkers = [
-            {
-                id: 'worker_sample_1',
-                name: 'Ramesh Kumar',
-                phone: '+91-9876543210',
-                email: 'ramesh.electrician@example.com',
-                jobRole: 'electrician',
-                experience: 8,
-                address: 'Hyderabad, Telangana',
-                password: 'password123',
-                rating: 4.8,
-                totalJobs: 45,
-                completedJobs: 43,
-                earnings: 125000,
-                createdAt: new Date(Date.now() - 86400000 * 30).toISOString()
-            },
-            {
-                id: 'worker_sample_2',
-                name: 'Suresh Reddy',
-                phone: '+91-9876543211',
-                email: 'suresh.plumber@example.com',
-                jobRole: 'plumber',
-                experience: 12,
-                address: 'Hyderabad, Telangana',
-                password: 'password123',
-                rating: 4.9,
-                totalJobs: 78,
-                completedJobs: 76,
-                earnings: 210000,
-                createdAt: new Date(Date.now() - 86400000 * 60).toISOString()
-            },
-            {
-                id: 'worker_sample_3',
-                name: 'Kiran Sharma',
-                phone: '+91-9876543212',
-                email: 'kiran.carpenter@example.com',
-                jobRole: 'carpenter',
-                experience: 6,
-                address: 'Hyderabad, Telangana',
-                password: 'password123',
-                rating: 4.6,
-                totalJobs: 32,
-                completedJobs: 30,
-                earnings: 95000,
-                createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
-            }
-        ];
-        
-        sampleWorkers.forEach(worker => {
-            app.authManager.saveWorkers([...app.authManager.getWorkers(), worker]);
-        });
-    }
 }
 
 // Initialize when DOM is ready
