@@ -1,5 +1,5 @@
 // ===== API Base URL =====
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file:')) ? window.location.origin : 'http://127.0.0.1:8000';
 
 // ===== Language/Internationalization System =====
 const i18n = {
@@ -2100,7 +2100,7 @@ function loadDashboard() {
     const status = elements.filterStatus ? elements.filterStatus.value : '';
     const sortBy = elements.sortIssues ? elements.sortIssues.value : 'newest';
 
-    fetch('http://127.0.0.1:8000/api/issues/my-issues/', {
+    fetch(`${API_BASE}/api/issues/my-issues/`, {
         credentials: 'include'
     })
     .then(res => res.json())
@@ -2622,7 +2622,7 @@ window.escalateIssuePrompt = escalateIssuePrompt;
 async function deleteIssuePrompt(issueId) {
     if (confirm('Are you strictly sure you want to permanently delete this issue? This action cannot be undone.')) {
         try {
-            const response = await fetch(`http://127.0.0.1:8000/api/issues/${issueId}/delete/`, {
+            const response = await fetch(`${API_BASE}/api/issues/${issueId}/delete/`, {
                 method: 'DELETE'
             });
             if (response.ok) {
