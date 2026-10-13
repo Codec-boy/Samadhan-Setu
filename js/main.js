@@ -5,7 +5,7 @@ import { checkAdminSession, adminLogin, adminLogout } from './auth.js';
 import { initComplaintForm } from './complaints.js';
 import { initTracking } from './tracking.js';
 import { loadAdminDashboard, initAdminFilters } from './admin.js';
-import { initMap, searchLocation } from './map.js';
+import { initMap, searchLocation } from './map.js?v=2';
 import { loadReviews, initReviewForm } from './reviews.js';
 import { loadWorkers, initWorkerEvents } from './workers.js';
 import { setLanguage } from './i18n.js';
